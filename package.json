@@ -16,6 +16,11 @@
     "hexo-renderer-ejs": "^0.3.1",
     "hexo-renderer-marked": "^0.3.2",
     "hexo-renderer-stylus": "^0.3.3",
-    "hexo-server": "^0.3.3"
+    "hexo-server": "^0.3.3",
+    "hexo-tag-plantuml": "^1.0.0"
+  },
+  "devDependencies": {
+    "babel-eslint": "^10.0.1",
+    "eslint": "^5.16.0"
   }
 }
