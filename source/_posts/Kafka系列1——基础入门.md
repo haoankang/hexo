@@ -31,7 +31,7 @@ Kafka的核心功能：高性能的消息发送和高性能的消息消费；
   producer: 
     .\bin\windows\kafka-console-producer.bat --broker-list localhost:9092 --topic test
   consumer:
-    .\bin\windows\kafka-console-consumer.bat --bootstrap-server localhost;9092 --topic test --from-beginning
+    .\bin\windows\kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic test --from-beginning
 ```
 ##2. 概述.
 2.1 kafka是一个消息引擎，消息引擎设计时要考虑两大要素：消息设计（xml、json、二进制..)
