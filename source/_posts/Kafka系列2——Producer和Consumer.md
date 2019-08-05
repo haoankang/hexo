@@ -174,3 +174,9 @@ public class ConsumerTest {
 2.4 消息轮询
 >poll内部原理：采用类似于linux IO模型的poll或select等，使用一个线程同时管理多个socket连接，即同时与多个broker通信实现消息的并行读取；
 一旦consumer订阅了topic，所有的消费逻辑包括coordinator的协调、消费者组的rebalance以及数据获取都会在主逻辑poll方法的以此调用中执行.
+poll方法返回的任一条件：获取足够多可用数据，等待时间超过设定的超时时间.
+
+2.5 位移管理
+
+
+2.6 rebalance
