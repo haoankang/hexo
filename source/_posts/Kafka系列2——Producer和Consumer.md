@@ -177,6 +177,27 @@ public class ConsumerTest {
 poll方法返回的任一条件：获取足够多可用数据，等待时间超过设定的超时时间.
 
 2.5 位移管理
-
+> 位移： 每个consumer实例都会为它消费的分区维护属于自己的位置信息来记录当前消费信息进度，被称为位移；<br>
+> 位移提交： consumer客户端需要定期向kafka集群汇报自己消费数据进度，这一过程被称为位移提交；<br>
+> __consumer_offsets: 位移提交会提交到kafka一个内部topic上，这个topic就是__consumer_offsets；数据格式：可以理解为一个KV格式的消息，
+key是一个三元组：group.id+topic+分区号，value是offset的指；<br>
+> 位移管理： consumer会在kafka集群的所有broker中选择一个作为consumer group的协调者(coordinator)，用于实现组成员管理、消费分配方案
+制定以及提交位移等。提交位移主要机制是通过向所属的coordinator发送位移提交请求来实现的；
+> 自动提交和手动提交： 默认自动提交，auto.commit.interval.ms可以控制自动提交间隔；手动提交就是用户自行去欸的那个消息何时被真正处理完
+并提交位移，设置enable.auto.commit=false，然后调用commitSync或commitAsync；
 
 2.6 rebalance
+>rebalance本质上是一组协议，规定了一个consumer group是如何达成一致来分配订阅topic的所有分区的；rebalance触发条件有三个：组成员发生变更，
+组订阅topic数发生变更，组订阅topic的分区数发生变更；
+
+2.7 解序列化
+>consumer端的解序列化和producer端的序列化是互逆操作，同理可自定义解序列化类；
+
+2.8 多线程消费实例
+>* 每个线程维护一个KafkaConsumer实例
+>* 单KafkaConsumer实例+多worker线程
+
+2.9 独立consumer
+> consumer不仅可以以consumer group形式出现，也可以独立使用，彼此独立工作互不干扰。以下情况适合使用独立consumer：
+>* 进程自己维护分区状态，可以固定消费某些分区不用担心消费状态丢失；
+>* 进程本身已经是高可用且能够自动重启恢复错误（比如yarn和mesos等容器调度框架），不需要kafka来错误检测和状态恢复；
