@@ -58,4 +58,59 @@ leader LEO时长不大于replica.lag.time.max.ms），比较它们的LEO，选�
 1.5 日志存储设计
 > kafka的日志设计都是以分区为单位，每个分区有自己的日志（分区日志）；每个分区日志都是由若干组日志段文件+索引文件组成；<br>
 > 创建topic时，kafka为每个分区在文件系统中创建一个对应的子目录，名字是<topic>-<分区号>.kafka的每个日志段文件是由上限大小的，由broker参数log.segment.bytes控制，
-默认1GB；日志段文件填满记录后，kafka会自动创建一组新的日志段文件和索引文件（日志切分）；kafka正在写入的分区日志段文件成为当前激活日志段或当前日志段.active log segment.
+默认1GB；日志段文件填满记录后，kafka会自动创建一组新的日志段文件和索引文件（日志切分）；kafka正在写入的分区日志段文件成为当前激活日志段或当前日志段.active log segment.<br>
+> 每个分区除了日志文件，还有位移索引文件和时间戳索引文件，按照规律升序排列，属于稀疏索引，利用升序规律，kafka可以二分查找搜寻索引，时间复杂度O(lgN).索引保存的是相对位移，
+索引文件大小设置参数log.index.size.max.bytes；索引项密度参数log.index.interval.bytes.<br>
+> 日志清理：两种留存策略——基于时间和基于大小，日志清理对当前日志段不生效；<br>
+> 日志compaction. 针对topic设置，提供更细粒度化的留存策略，本质是针对K-V的消息，删除之前的消息，只保留最新的value消息；为了实现log compaction,kafka在逻辑上将
+每个log分成log tail和log head，log head连续递增，log tail位移不连续；kafka的组件cleaner负责执行compaction；
+
+1.6 通信协议
+> Kafka的通信协议是基于TCP之上的二进制协议，这套协议所有类型的请求和响应都是结构化的，由不同的初始类型构成；broker端可配置参数用于限制broker端能处理请求的最大字节数，
+超过阈值请求的socket连接会被强制关闭；kafka通信协议中规定的请求发送流向由3种——clients给broker发送请求、controller给其他broker发送请求、follow副本所在broker向leader
+副本所在broker发送FETCH请求；clients与broker传输数据时，需要创建一个连向特定broker的socket长连接，单个clients通常需要连接多个broker，每个broker只需要维护一个socket；
+kafka自带的java clients使用类似于epoll方式在当个连接上不停轮询传输数据；broker端需要确保在单个socket连接上按照发送顺序处理请求；<br>
+> 请求/响应结构。kafka协议提供的所有请求及响应结构体都由固定格式组成，统一构建于多种初始类型之上，初始类型由：固定长度初始类型（int8,int16,int32,int64），可变长度初始
+类型（bytes和string），数组；所有请求和响应统一格式——Size+Request/Response.
+>>* 请求分为请求头部和请求体，请求头结构固定，由4个字段组成——api_key(int16)、api_version(int16)、correlation_id(int32)、client_id(string)；
+>>* 响应分为响应头部和响应体，响应头结构固定，1个字段——correlation_id，与请求头中字段对应；
+>>* 常见请求类型：PRODUCE请求(api_key=0)，V6版本的produce请求格式为——事务ID+acks+timeout+[topic数据]，响应结构——[response]+throttle_time_ms；FETCH请求(api_key=1)，
+包括clients向broker发送的FETCH请求和follower给leader发送的FETCH请求，最新版本格式：replica_id+max_wait_time+min_bytes+max_bytes+isolation_level+[topics]，响应格式
+throttle_time_ms[response]；METADATA请求，用于获取指定topic的元数据信息，格式[topics]+allow_auto_topic_creation，响应格式多变；
+> 请求处理流程.![clients端](/images/Kafka_9.png)  ![broker端](/images/Kafka_10.png)
+
+1.7 controller设计
+> kafka集群中，某个broker会被选举为controller，用来管理和协调kafka集群，具体是管理集群中所有分区状态并执行相应管理操作。![](/images/Kafka_11.png)
+> controller管理状态，维护的状态分为两类：每台broker上的分区副本和每个分区的leader副本信息，从维度上分为副本状态和分区状态；![](/images/Kafka_12.png)
+> controller职责：更新集群元数据信息、创建topic、删除topic、分区重分配、preferred leader副本选举、topic分区扩展、broker加入集群、broker崩溃、受控关闭、controller leader选举；
+
+1.8 broker请求处理
+> broker处理请求模式是Reactor设计模式；![](/images/Kafka_13.png)
+> processor线程数量可通过num.network.threads配置，broker会为用户配置的每组listener创建一组processor线程；processor线程一个重要任务是将socket连接上接收到的请求放入请求队列中，
+KafkaRequestHandler线程池专门处理请求；请求队列由参数queued.max.requests控制，默认500，如果发送请求超过，发送给这个broker的请求会被阻塞；broker请求处理类似于主从Reactor多线程
+模型；
+
+##2 producer端设计
+2.1 producer基本数据结构.
+>producer端与broker的主要交互是发哦是那个信息然后接收回调请求；因此如第2节的代码示例，主要数据结构是ProducerRecord和RecordMetadata.
+
+2.2 工作流程.
+![](/images/Kafka_14.png)
+详细流程如下：
+>* 序列化+计算目标分区；
+>* 追加写入消息缓冲区；producer创建时会创建一个默认32MB的缓冲区，用于保存待发送的消息；关键参数有linger.ms、batch.size和消息批次信息(batches)，batches本质上是
+一个HashMap，分别保存了每个topic分区下的batch队列，例如{"test-0"->[batch1,batch2],"test-1"->[batch3]}；
+>* sender线程预处理及消息发送；
+>* sender线程处理response；
+
+##3 consumer端设计
+3.1 consumer group状态机. ![](/images/Kafka_15.png)
+
+3.2 group管理协议. 
+> coordinator的组管理协议由两个阶段构成——组成员加入阶段和状态同步阶段。第一个阶段用于为group指定active成员并从中选出leader consumer，第二个阶段让leader consumer
+制定分配方案并同步到其他组成员中；
+
+##4 实现精确一次处理语义
+4.1 消息交付语义：最多一次，最少一次，精确一次；
+
+4.2 kafka如何实现精确一次处理语义：幂等性producer（PID，producer自行分配）和事务（TransactionalId，用户显示提供）
