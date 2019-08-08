@@ -114,3 +114,5 @@ KafkaRequestHandler线程池专门处理请求；请求队列由参数queued.max
 4.1 消息交付语义：最多一次，最少一次，精确一次；
 
 4.2 kafka如何实现精确一次处理语义：幂等性producer（PID，producer自行分配）和事务（TransactionalId，用户显示提供）
+
+本文大部分内容摘自《Apache Kafka实战》
