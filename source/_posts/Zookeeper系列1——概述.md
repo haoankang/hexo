@@ -40,3 +40,10 @@ zookeeper引入Leader、Follower和Observer三种角色；leader提供读写服�
 >* set data
 >* get children
 >* sync
+
+1.5 分布式一致性协议.
+>* 2PC: 提交事务请求——》执行事务提交
+>* 3PC: canCommit-->preCommit-->doCommit
+>* TCC: Try-->Conform/cancel
+>* Paxos算法: “过半”原则，少数服从多数
+>* ZAB: zookeeper的一致性协议（Zookeeper Atomic Broadcast，zookeeper原子消息广播协议）
