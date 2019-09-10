@@ -46,4 +46,12 @@ WatcherEvent，后者实际上是前者的简化用于传输，主要包含三�
 >>* 客户端注册watcher：客户端watcher经过包装构成了一个WatchRegistration对象，标记request，但最终打包packet发消息时
 并没有携带此对象（包含两个字段：watcher和clientpath，可以理解成一个映射表），响应成功后，将WatchRegistration对象
 放到对应的ZKWatchManager中进行管理；
->>* 服务端处理watcher：
+>>* 服务端处理watcher——完成watcher注册：服务端接收到请求后，判断是否有watcher，如果有则将当前的ContextCnxn传递给getData
+逻辑，因为继承了Watcher，可以看作是一个Watcher，数据节点的节点路径和ContextCnxn最终会被存储在WatchManager
+的watchTable和watch2Paths中. 
+>>* 务端处理watcher——watcher触发：上一步可以看出，实际上相当于服务端也维护了一个映射表，这里注册的是getData()
+方法，当调用setData(..)或delete(..)时会触发，服务端这类操作会在最后调用dataWatches.triggerWatch(path,event)
+方法；无论是dataWatches或childWatches，触发执行逻辑是一样的：封装WatchedEvent，查询Watcher，调用process()
+触发Watcher（组装发送一个通知给客户端）；以上步骤，所以真正的客户端触发回调和业务逻辑执行都在客户端；
+>>* 客户端回调Watcher：客户端收到请求后判断这是一个watcher通知，再按照下面逻辑执行：反序列化，处理chrootpath，
+还原WatchedEvent，回调Watcher. 以上回调过程，注意回调是放到队列中串行执行的；
