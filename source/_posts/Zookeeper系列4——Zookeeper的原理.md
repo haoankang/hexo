@@ -55,3 +55,67 @@ WatcherEvent，后者实际上是前者的简化用于传输，主要包含三�
 触发Watcher（组装发送一个通知给客户端）；以上步骤，所以真正的客户端触发回调和业务逻辑执行都在客户端；
 >>* 客户端回调Watcher：客户端收到请求后判断这是一个watcher通知，再按照下面逻辑执行：反序列化，处理chrootpath，
 还原WatchedEvent，回调Watcher. 以上回调过程，注意回调是放到队列中串行执行的；
+
+1.5 ACL
+> ACL(Access control list), Zookeeper的权限模式有三个部分：模式、授权对象和权限，通常使用
+"scheme:id:permission"来标识一个有效的ACL信息.权限模式常用的有四种：IP、Digest、World、Super；
+权限有五种：create、read、delete、write、admin.<br>
+自定义权限控制器：实现接口org.apache.zookeeper.server.auth.AuthenticationProvider，再配置
+authProvider.1=**.**.**（实现接口的类）
+
+##2. 序列化与协议.
+2.1 zookeeper的序列化协议是jute. 序列化和反序列化步骤如下：
+>* 实体类需要实现Record接口的serialize和deserialize方法;
+>* 构建一个序列化器BinaryOutputArchive;
+>* 序列化；
+>* 反序列化；
+
+2.2 zookeeper有自己的通信协议.
+>* 为了高效，zookeeper的协议尽可能简洁，包含三部分：length、请求头/响应头、请求体/响应体；请求头包含最
+基本信息：xid和type，每个操作对应不同的请求体，格式相对固定；响应头包含每个响应最基本信息：xid、zxid和
+err，不同响应类型对应不同响应体；
+
+##3. 客户端.
+3.1 客户端核心几个类：
+>* Zookeeper实例：客户端入口；
+>* ClientWatchManager：客户端watcher管理器；
+>* HostProvider：客户端地址列表管理器；
+>* ClientCnxn：客户端核心线程，内部两个线程，SendThread是I/O线程，负责客户端和服务端的所有网络通信，
+EventThread是事件线程，负责对服务端事件进行处理；
+![客户端整体结构](/images/zookeeper_2.png)
+
+3.2 会话创建过程.
+> 1. 初始化zookeeper对象；
+> 2. 设置会话默认Watcher；
+> 3. 构造服务器地址列表管理器HostProvider；
+> 4. 创建并初始化客户端网络连接器ClientCnxn；
+> 5. 初始化SendThread和EventThread；以上是初始化阶段；
+> 6. 启动SendThread和EventThread；
+> 7. 根据服务器地址列表获取一个地址；
+> 8. 创建TCP连接,ClientCnxnSocket；
+> 9. 构造ConnectRequest请求；
+> 10.发送请求；以上是会话创建阶段；
+> 11.接收服务端响应；
+> 12.处理Response；
+> 13.连接成功，生成事件：SyncConnected-None；
+> 14.查询watcher，处理事件；
+
+3.3 服务器地址列表
+> 创建客户端时，会传入地址列表，通过ConnectStringParser解析器解析：解析chrooPath和保存地址列表；
+chrooPath就是为每个会话设定单独的根目录（命名空间），例如写入的地址列表是"host1:2181,host2:2181,host3:2181/hak"，
+当前会话根目录就是/hak；zookeeper获取地址策略类似于Round Robin，先随机打乱组成一个环，以后就顺序
+遍历这个环，也可以实现自己的路由策略；
+
+3.4 ClientCnxn：网络I/O
+> ClientCnxn是客户端核心类，内部定义了很多重要的类如：Packet、SendThread和EventThread及其对象用于管理；
+其中Packet是每次请求的包装类，细节可见源码；还有比较重要的变量是outgoingQueue和pendingQueue，前者是
+发送请求队列，后者是服务端的响应等待队列；ClientCnxnSocket定义了底层Socket通信接口；
+
+##4. 会话
+4.1 Zookeeper的连接和会话就是客户端通过实例化Zookeeper对象来实现客户端与服务端创建并保持TCP长连接的过程；
+>会话状态有Connecting、Connected和Close.
+
+4.2 会话创建
+>会话Session包含四个属性：SessionId（根据机器标识和当前时间根据一定算法得出），TimeOut、TickTime、isClosing；
+
+##5. 服务器启动
