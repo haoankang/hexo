@@ -20,7 +20,7 @@ zookeeper可以保证如下分布式一致性特性：顺序一致性、原子�
 >* 高性能(zookeeper将全量数据存储在内存中)
 
 1.3 zookeeper的数据模型和分层命名空间.
->zookeeper提供的命名空间类似于标准文件系统，名称由/分割的路径元素序列，命名空间中的每个节点都由路径标识。![](/images/zookeeper_1.png)
+>zookeeper提供的命名空间类似于标准文件系统，名称由/分割的路径元素序列，命名空间中的每个节点都由路径标识。![](/images/zookeeper_0.png)
 
 1.4 zookeeper的概念.
 >重要概念总结

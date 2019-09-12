@@ -49,7 +49,7 @@ WatcherEvent，后者实际上是前者的简化用于传输，主要包含三�
 >>* 服务端处理watcher——完成watcher注册：服务端接收到请求后，判断是否有watcher，如果有则将当前的ContextCnxn传递给getData
 逻辑，因为继承了Watcher，可以看作是一个Watcher，数据节点的节点路径和ContextCnxn最终会被存储在WatchManager
 的watchTable和watch2Paths中. 
->>* 务端处理watcher——watcher触发：上一步可以看出，实际上相当于服务端也维护了一个映射表，这里注册的是getData()
+>>* 服务端处理watcher——watcher触发：上一步可以看出，实际上相当于服务端也维护了一个映射表，这里注册的是getData()
 方法，当调用setData(..)或delete(..)时会触发，服务端这类操作会在最后调用dataWatches.triggerWatch(path,event)
 方法；无论是dataWatches或childWatches，触发执行逻辑是一样的：封装WatchedEvent，查询Watcher，调用process()
 触发Watcher（组装发送一个通知给客户端）；以上步骤，所以真正的客户端触发回调和业务逻辑执行都在客户端；
@@ -94,11 +94,11 @@ EventThread是事件线程，负责对服务端事件进行处理；
 > 7. 根据服务器地址列表获取一个地址；
 > 8. 创建TCP连接,ClientCnxnSocket；
 > 9. 构造ConnectRequest请求；
-> 10.发送请求；以上是会话创建阶段；
-> 11.接收服务端响应；
-> 12.处理Response；
-> 13.连接成功，生成事件：SyncConnected-None；
-> 14.查询watcher，处理事件；
+> 10. 发送请求；以上是会话创建阶段；
+> 11. 接收服务端响应；
+> 12. 处理Response；
+> 13. 连接成功，生成事件：SyncConnected-None；
+> 14. 查询watcher，处理事件；
 
 3.3 服务器地址列表
 > 创建客户端时，会传入地址列表，通过ConnectStringParser解析器解析：解析chrooPath和保存地址列表；
@@ -119,3 +119,39 @@ chrooPath就是为每个会话设定单独的根目录（命名空间），例�
 >会话Session包含四个属性：SessionId（根据机器标识和当前时间根据一定算法得出），TimeOut、TickTime、isClosing；
 
 ##5. 服务器启动
+5.1 服务器的整体架构如下图：
+![服务器整体架构](/images/zookeeper_3.png)
+
+5.2 单机版服务器启动流程
+![](/images/zookeeper_4.png)
+
+5.3 集群版服务器启动流程
+![](/images/zookeeper_5.png)
+
+5.4 集群版Leader和Follower服务器启动期交互过程
+![](/images/zookeeper_6.png)
+
+##6. Leader选举
+6.1 选举是按照投票来选举的，这里先明确投票的内容：
+>* id: 被推举的leader的SID值；
+>* zxid: 被推举的leader的事务id；
+>* electionEpoch: 逻辑时钟，用来判断多个投票是否在同一选举周期内；自增序列；
+>* peerEpoch: 被选举的leader的epoch；
+>* state: 当前服务器状态:LOOKING\LEADING\FOLLOWING\OBSERVING；
+
+6.2 leader选举流程：两台机器可以互联时，每台试图找到一个leader，于是开始leader选举，过程如下：
+>* 每个server会发出一个投票，第一次投票通常都是投自己；
+>* 接收来自各个服务器的投票；
+>* 处理投票：zxid->id比较选出leader，再次发出投票；
+>* 统计投票；
+>* 改变服务器状态；
+
+##7. 服务器角色
+zookeeper服务器角色有：Leader、Follower、Observer；其中Observer可以没有，需要指定时在服务器列表中配置，
+如server.xx=ip:port1:port2:observer；zookeeper的服务器采用责任链模式处理请求；集群间通信消息类型分为
+四类：数据同步，服务器初始化，请求处理，会话管理；
+>* leader的主要工作：事务请求的唯一调度和处理者，保证集群事务处理的顺序性；集群内部各服务器的调度者；
+>* follower的工作：处理客户端非事务请求，转发事务请求给leader；参与事务请求的投票；参与leader选举投票；
+>* observer的工作：observer工作原理和follower一致，唯一不同的是observer不参与任何形式的投票；observer
+通常用于不影响集群事务处理能力的前提下提升集群的非事务处理能力；
+
