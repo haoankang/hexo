@@ -162,3 +162,56 @@ end
 >>* 调用方式不同，存储函数在表达式中调用，存储过程需要call调用；
 >>* 存储函数只支持IN参数，存储过程支持IN、OUT、INOUT参数；
 >>* 存储函数只能返回一个值，存储过程可以返回多个值；
+
+>* 游标
+>> 游标用于遍历数据，一般配合存储过程使用，样例如下:
+```sql
+delimiter $
+
+create procedure cursor_demo2()
+BEGIN
+	declare m_addr VARCHAR(30);
+	declare m_phone varchar(30);
+	declare record_count int;
+	declare i int default 0;
+
+	declare t2_record_crusor cursor for select addr, phone from student;
+	select count(*) from student into record_count;
+
+	open t2_record_crusor;
+	while i < record_count DO
+		fetch t2_record_crusor into m_addr, m_phone;
+		select m_addr,m_phone;
+		set i=i+1;
+	end while;
+	close t2_record_crusor;
+end
+$
+```
+>* 触发器
+>> 触发器是指在对表中记录做增删改前后可以让mysql自动执行一些语句；
+```sql
+CREATE TRIGGER 触发器名
+{BEFORE|AFTER}
+{INSERT|DELETE|UPDATE}
+ON 表名
+FOR EACH ROW
+BEGIN
+    触发器内容
+END
+```
+>> 注意点：1. 触发器内容中不能有输出结果集的语句；2. 触发器中NEW代表记录列的值可以被更改，OLD代表不可更改；
+>* 事件
+>> 事件可以让mysql服务器在固定时间或每隔一段时间自动执行一些语句，语法如下：
+```sql
+CREATE EVENT 事件名
+ON SCHEDULE
+{
+    AT 某个确定的时间点| 
+    EVERY 期望的时间间隔 [STARTS datetime][END datetime]
+}
+DO
+BEGIN
+    具体的语句
+END
+```
