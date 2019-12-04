@@ -1,5 +1,5 @@
 ---
-title: 踩坑系列——兼容oracle引发的事件
+title: 踩坑系列——mybatis兼容oracle引发的事件
 date: 2019-10-31 10:34:11
 categories: 踩坑系列
 tags: spring boot,mybatis,mybatis-generator
