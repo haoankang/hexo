@@ -44,3 +44,5 @@ end
 SpringMVC是一个Web开发框架，把后端项目分层为Model、View、Controller，工作原理如下：
 ![](/images/spring_4.jpg)
 
+**5.拦截器和过滤器**
+
