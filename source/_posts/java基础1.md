@@ -57,3 +57,7 @@ tags: java
 
 9.泛型.
 >泛型即参数化类型；
+
+10.Integer缓冲池
+>new Integer(112)和Integer.valueOf(112)的区别是：new Integer(112)每次都会产生新的对象，Integer.valueOf(112)
+会使用缓冲池中的对象，多次调用会返回同一对象；这是因为Integer内部默认有个IntegerCache缓冲池，会缓冲-128~127的对象;
