@@ -83,3 +83,14 @@ SpringMVC是一个Web开发框架，把后端项目分层为Model、View、Contr
 >* 模板方法：例如JdbcTemplete等;
 >*  观察者 ：Sping事件驱动模型;
 >*  适配器 ：AOP的增强或通知时使用了适配器模式，Jpa适配不同数据库；
+
+**8. Spring IOC的初始化过程**
+>1. 读取资源配置文件；
+>2. 解析并包装成相应的BeanDefinition；
+>3. 注册到BeanFactory中；
+
+**9. Spring如何解决循环依赖问题**
+首先，需要明确的是spring对循环依赖的处理有三种情况：
+>* 构造器的循环依赖：这种依赖spring是处理不了的，直 接抛出BeanCurrentlylnCreationException异常。
+>* 单例模式下的setter循环依赖：通过“三级缓存”处理循环依赖。
+>* 非单例循环依赖：无法处理。
