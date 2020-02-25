@@ -61,3 +61,29 @@ tags: java
 10.Integer缓冲池
 >new Integer(112)和Integer.valueOf(112)的区别是：new Integer(112)每次都会产生新的对象，Integer.valueOf(112)
 会使用缓冲池中的对象，多次调用会返回同一对象；这是因为Integer内部默认有个IntegerCache缓冲池，会缓冲-128~127的对象;
+
+11.异常.
+相关关键字：try..catch、finally、throw、throws；
+>finally：必定执行，当try和catch中有return时，finally仍会执行，且finally比return先执行；finally是在return
+>后面的表达式运算后执行的；
+
+>finally不执行的情况：程序提前终止如调用System.exit，病毒或断电等；
+
+>* 异常基类是Throwable，下面分为Error和Exception.
+>* Error是指程序无法处理的错误，无法恢复也无法catch，Exception是程序可以处理的异常；
+>* Exception又分为受检查异常和运行时异常；区别在于编译时是否需要处理，受检查异常编译时必须处理,例如IOException；
+>运行时异常可以处理也可以不处理；常见的运行时异常有：NullPointException、ClassCastException、IndexOutOfBoundsException、
+>IllegalArgumentException、NoSuchMethodException.
+
+12.局部变量为什么一定要初始化.
+>局部变量是指方法内的变量，必须初始化；因为局部变量运行时被分配在栈中，量大且生命周期短，如果虚拟机初始化开销大，但是
+>变量不初始化默认值使用是不安全的，因此出于速度和安全性考虑，局部变量需要初始化；
+
+13.内部类访问局部变量时，为什么变量一定要用final修饰.
+>因为生命周期不同。局部变量在方法结束后销毁，内部类对象不一定，就会导致内部类引用了一个不存在的变量，所以编译器会在
+>内部类生成一个局部变量的拷贝，但如果其中一个变量修改，就会导致两个变量可能是不同的值，因此编译器要求局部变量加final，
+>保证两个变量值相同；JDK8后不需要局部变量加final，是因为编译器检查时默认加上了final.
+
+14.如何打破ClassLoader的双亲委托机制.
+>重写loadClass().
+
